@@ -110,13 +110,16 @@ end
 #
 #######################################
 options = { :tag_name => nil,
-            :tag_value => nil }
+            :tag_value => nil,
+            :aws_creds_profile => 'default'
+          }
 OptionParser.new do |opts|
   opts.banner = "Usage: #{self.to_s} [options]"
-  opts.on("-t", "--tag_name TAG_NAME", "Tag name of the instances to backup") { |v| options[:tag_name] = v }
+  opts.on('-t', '--tag_name TAG_NAME', 'Tag name of the instances to backup') { |v| options[:tag_name] = v }
   opts.on('-v', '--tag_value TAG_VALUE', 'Tag value of instances to backup') { |v| options[:tag_value] = v }
   opts.on('-x', '--retention_time RETENTION_TIME', 'Retention time in days for AMIs') { |v| options[:retention_time] = v }
-  opts.on('-r', '--region_name [REGION_NAME]', 'Region Name') { |v| options[:region_name] = v }
+  opts.on('-r', '--region_name [REGION_NAME]', 'AWS Region Name') { |v| options[:region_name] = v }
+  opts.on('-p', '--aws_creds_profile [AWS_CREDS_PROFILE]', 'AWS credentials profile') { |v| options[:aws_creds_profile] = v }
   opts.on_tail('-h', '--help', 'Prints this help') do
     puts opts
     exit
@@ -126,12 +129,12 @@ end.parse!
 options.each_value do |opt|
   if opt == nil
     puts "\nUsage: main [options]\n
-    -t TAG_NAME,         Instance tag name (key)
-        --tag_name
-    -v, --tag_value TAG_VALUE          Instance tag value
-    -x, --retention_time               Retention time in days for the AMIs
-    -r, --region_name [REGION_NAME]    Region Name
-    -h, --help                       Prints this help
+    -t, --tag_name TAG_NAME,                      Tag name of the instances to backup (key)
+    -v, --tag_value TAG_VALUE,                    Tag value of the instances to backup
+    -x, --retention_time,                         Retention time in days for the AMIs
+    -r, --region_name [REGION_NAME],              AWS Region Name
+    -p, --aws_creds_profile [AWS_CREDS_PROFILE],  AWS credentials profile
+    -h, --help                                    Prints this help
     "
     exit
   end
@@ -139,9 +142,10 @@ end
 
 begin
   if options.has_key?(:region_name)
-    ec2 = Aws::EC2::Resource.new(region: options[:region_name])
+    credentials = Aws::SharedCredentials.new(profile_name: options[:aws_creds_profile])
+    ec2 = Aws::EC2::Resource.new(credentials: credentials, region: options[:region_name])
   else
-    ec2 = Aws::EC2::Resource.new
+    ec2 = Aws::EC2::Resource.new(credentials: credentials)
   end
 rescue Aws::Errors::MissingRegionError => error
   puts "You need to configure AWS region."
