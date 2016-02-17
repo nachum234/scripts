@@ -40,6 +40,7 @@
 #
 require 'rubygems'
 require 'optparse'
+require 'date'
 require 'aws-sdk-resources'
 
 $toolname = 'aws_ami_autobackup'
@@ -55,10 +56,16 @@ def create_ami(ec2,tag_key,tag_value)
   })
 
   instances_to_backup.each do |instance_to_backup|
-    puts "create image for instance #{instance_to_backup.id}"
+    instance_name = 'empty'
+    instance_to_backup.tags.each do |tag|
+      if tag.key == 'Name'
+        instance_name = tag.value
+      end
+    end
+    puts "create image for instance #{instance_name} (#{instance_to_backup.id})"
     image = instance_to_backup.create_image({
       name: "#{$toolname}-#{instance_to_backup.id}-#{tag_key}-#{tag_value}-#{Time.now.to_i}",
-      description: "#{$toolname}-#{tag_key}-#{tag_value}",
+      description: "#{$toolname}-#{tag_key}-#{tag_value}-#{instance_name}",
       no_reboot: true,
     })
     puts "image name is #{image.name}"
@@ -87,7 +94,7 @@ def remove_old_ami(ec2,retention_time,tag_key,tag_value)
   })
 
   images_to_remove.each do |image|
-    creation_unixtime = Time.new(image.creation_date).to_i
+    creation_unixtime = DateTime.parse(image.creation_date).to_time.to_i
     current_unixtime = Time.now.to_i
     puts "checking image #{image.name}"
     if current_unixtime - creation_unixtime > retention_time_in_sec
@@ -95,9 +102,11 @@ def remove_old_ami(ec2,retention_time,tag_key,tag_value)
       block_device_mappings = image.block_device_mappings
       image.deregister({})
       block_device_mappings.each do |block_device|
-        puts "deleting #{block_device.ebs.snapshot_id}"
-        snapshot = ec2.snapshot(block_device.ebs.snapshot_id)
-        snapshot.delete({})
+        unless block_device.ebs.nil?
+          puts "deleting #{block_device.ebs.snapshot_id}"
+          snapshot = ec2.snapshot(block_device.ebs.snapshot_id)
+          snapshot.delete({})
+        end
       end
     else
       puts "keeping image #{image.name}"
