@@ -18,13 +18,12 @@ function write_log
 ################################################################
 function check_if_already_run
 {
-	PID=$$
-        TMP=`pgrep -f ${SCRIPT_NAME}`
-        if [ "${TMP}" != "${PID}" ] 
-		then
+    PROC_NUM=`ps -ef | grep ${SCRIPT_NAME} | grep -v grep | grep -v $$ | grep -v ${PPID} | wc -l`
+    if [ ${PROC_NUM} -gt 0 ] 
+	then
 		write_log "${SCRIPT_NAME} is already running"
-                exit 0;
-        fi
+        exit 0;
+    fi
 }
 ################################################################
 function err_handle

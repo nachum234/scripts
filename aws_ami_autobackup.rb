@@ -42,15 +42,16 @@ require 'rubygems'
 require 'optparse'
 require 'date'
 require 'aws-sdk-resources'
+require 'json'
 
 $toolname = 'aws_ami_autobackup'
 
 #######################################
-def create_ami(ec2,tag_key,tag_value)
+def create_ami(ec2,options,ignore_devices_array)
   instances_to_backup = ec2.instances({
     filters: [{
-      name: "tag:#{tag_key}",
-      values: [tag_value],
+      name: "tag:#{options[:tag_name]}",
+      values: [options[:tag_value]],
       },
     ],
   })
@@ -63,17 +64,28 @@ def create_ami(ec2,tag_key,tag_value)
       end
     end
     puts "create image for instance #{instance_name} (#{instance_to_backup.id})"
-    image = instance_to_backup.create_image({
-      name: "#{$toolname}-#{instance_to_backup.id}-#{tag_key}-#{tag_value}-#{Time.now.to_i}",
-      description: "#{$toolname}-#{tag_key}-#{tag_value}-#{instance_name}",
-      no_reboot: true,
-    })
+    if ignore_devices_array.any?
+      image = instance_to_backup.create_image({
+        name: "#{$toolname}-#{instance_to_backup.id}-#{options[:tag_name]}-#{options[:tag_value]}-#{Time.now.to_i}",
+        description: "#{$toolname}-#{options[:tag_name]}-#{options[:tag_value]}-#{instance_name}",
+        no_reboot: true,
+        block_device_mappings:
+          ignore_devices_array
+      })
+    else
+      image = instance_to_backup.create_image({
+        name: "#{$toolname}-#{instance_to_backup.id}-#{options[:tag_name]}-#{options[:tag_value]}-#{Time.now.to_i}",
+        description: "#{$toolname}-#{options[:tag_name]}-#{options[:tag_value]}-#{instance_name}",
+        no_reboot: true,
+      })
+    end
+
     puts "image name is #{image.name}"
     image.create_tags({
       tags: [
         {
-          key: tag_key,
-          value: tag_value,
+          key: options[:tag_name],
+          value: options[:tag_value],
         },
       ],
     })
@@ -129,6 +141,7 @@ OptionParser.new do |opts|
   opts.on('-x', '--retention_time RETENTION_TIME', 'Retention time in days for AMIs') { |v| options[:retention_time] = v }
   opts.on('-r', '--region_name [REGION_NAME]', 'AWS Region Name') { |v| options[:region_name] = v }
   opts.on('-p', '--aws_creds_profile [AWS_CREDS_PROFILE]', 'AWS credentials profile') { |v| options[:aws_creds_profile] = v }
+  opts.on('-d', '--ignore_devices [IGNORE_DEVICES]', 'Comma seperated device list to ignore Ex: /dev/sdc,/dev/sdf') { |v| options[:ignore_devices] = v }
   opts.on_tail('-h', '--help', 'Prints this help') do
     puts opts
     exit
@@ -143,6 +156,7 @@ options.each_value do |opt|
     -x, --retention_time,                         Retention time in days for the AMIs
     -r, --region_name [REGION_NAME],              AWS Region Name
     -p, --aws_creds_profile [AWS_CREDS_PROFILE],  AWS credentials profile
+    -d, --ignore_devices,                         Comma seperated device list to ignore Ex: /dev/sdc,/dev/sdf
     -h, --help                                    Prints this help
     "
     exit
@@ -163,5 +177,12 @@ rescue Aws::Errors::MissingRegionError => error
   exit
 end
 
-create_ami(ec2,options[:tag_name],options[:tag_value])
+# build array of devices to ignore
+ignore_devices_array = []
+if options.has_key?(:ignore_devices)
+  options[:ignore_devices].split(",").each do |ignore_device|
+    ignore_devices_array.push("device_name" => ignore_device, "no_device" => "")
+  end
+end
+create_ami(ec2,options,ignore_devices_array)
 remove_old_ami(ec2,options[:retention_time],options[:tag_name],options[:tag_value])
