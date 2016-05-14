@@ -5,12 +5,12 @@
 # DESCRIPTION:
 #
 #   This tool gets: 
-#   1. intances tag and values to backup. example: tag=daily_backup, value=true (daily_backup -> true)
-#   2. retention time to delete old ami and snapshos that older then this retention time
+#   1. Intances tag and value to backup. example: tag=daily_backup, value=true
+#   2. Retention time to delete old ami and snapshots that older then this time (in days)
 #
 #   The tool will do the following:
 #   1. create ami from the instances that contain the tag name and value
-#   2. create the ami with tags of:
+#   2. create the ami with the following tag:
 #     1. aws_ami_autobackup -> tag name (example: aws_ami_autobackup -> daily_backup)
 #   3. delete ami's that contain aws_ami_autobackup -> tag name and older then retention time
 #
@@ -25,18 +25,18 @@
 #   gem: optparse
 #   gem: aws-sdk-resources
 #   credential file: ~/.aws/credentials containing aws access key and aws secret access key
-#     example:
+#   example:
 #     [default]
 #     aws_access_key_id = XXXXXXXXXXXXXXXXXXXX
 #     aws_secret_access_key = YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
 #
 # USAGE:
-#   aws_ami_autobackup.rb -t tag_name -v tag_value -r retention_time
+#   aws_ami_autobackup.rb -t tag_name -v tag_value -r retention_time [-p aws_profile ] [ -d ignore_devices ]
 #
 # NOTES:
 #
-#  LICENSE:
-#    Yossi Nachum   <nachum234@gmail.com>
+# LICENSE:
+#   Yossi Nachum   <nachum234@gmail.com>
 #
 require 'rubygems'
 require 'optparse'
