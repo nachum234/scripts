@@ -90,10 +90,7 @@ body: {
   }
 }
 
-#puts response.to_json
-#response['hits']['hits'].each do |hit|
-#  puts "#{hit['_source']['time_stamp']},#{hit['_source']['group_id']},#{hit['_source']['response_code']},#{hit['_source']['client_ip']},#{hit['_source']['domain']}"
-#end
+puts response['hits']['hits'].map { |r| "#{r['_source']['time_stamp']},#{r['_source']['group_id']},#{r['_source']['response_code']},#{r['_source']['client_ip']},#{r['fields']['bytes_overall'][0]},#{r['_source']['domain']}" }
 while response = client.scroll(scroll_id: response['_scroll_id'], scroll: '5m') and not response['hits']['hits'].empty? do
   puts response['hits']['hits'].map { |r| "#{r['_source']['time_stamp']},#{r['_source']['group_id']},#{r['_source']['response_code']},#{r['_source']['client_ip']},#{r['fields']['bytes_overall'][0]},#{r['_source']['domain']}" }
 end
