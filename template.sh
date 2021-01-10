@@ -6,6 +6,7 @@
 #
 ################################################################
 SCRIPT_NAME=`basename $0`
+PID_FILE=/var/run/${SCRIPT_NAME}.pid
 ################################################################
 #
 # Functions
@@ -16,14 +17,16 @@ function write_log
 	logger -p local1.info -t ${SCRIPT_NAME} "$*"
 }
 ################################################################
-function check_if_already_run
+function check_if_already_running
 {
-    PROC_NUM=`ps -ef | grep ${SCRIPT_NAME} | grep -v grep | grep -v $$ | grep -v ${PPID} | wc -l`
-    if [ ${PROC_NUM} -gt 0 ] 
+  RUNNING_PID=$(pgrep -F ${PID_FILE})
+	if [ "x${RUNNING_PID}" = "x" ]
 	then
-		write_log "${SCRIPT_NAME} is already running"
-        exit 0;
-    fi
+		write_log "${SCRIPT_NAME} is not running, starting..."
+	else
+		write_log "${SCRIPT_NAME} is already running, exit"
+		exit 1
+	fi
 }
 ################################################################
 function err_handle
@@ -57,7 +60,7 @@ function usage
 # Main
 #
 ################################################################
-check_if_already_run
+check_if_already_running
 while getopts ":s:" OPT; do
   case ${OPT} in
     s)
